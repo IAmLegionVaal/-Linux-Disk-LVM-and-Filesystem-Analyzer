@@ -16,7 +16,7 @@ Usage: linux_disk_lvm_repair.sh ACTION TARGET [options]
 
 Actions:
   --check-device DEVICE       Run a read-only filesystem check.
-  --repair-device DEVICE      Repair an unmounted ext filesystem.
+  --repair-device DEVICE      Repair an unmounted ext or XFS filesystem.
   --mount-all                 Validate and mount entries from /etc/fstab.
   --remount-rw MOUNTPOINT     Remount a mounted filesystem read-write.
   --extend-lv LV --size SIZE  Extend one logical volume and its filesystem.
@@ -121,8 +121,11 @@ case "$ACTION" in
   extend-lv)
     command -v lvs >/dev/null 2>&1 || { echo "LVM tools are not installed." >&2; exit 3; }
     lvs "$TARGET" >/dev/null 2>&1 || { echo "Logical volume not found: $TARGET" >&2; exit 2; }
-    case "$SIZE" in +[0-9]*[KkMmGgTt]|+[0-9]*%FREE|+[0-9]*%VG) : ;; *) echo "Use a positive size such as +10G or +25%FREE." >&2; exit 2 ;; esac
-    run_root "Extending $TARGET by $SIZE and resizing its filesystem" lvextend -r -L "$SIZE" "$TARGET" || true
+    case "$SIZE" in
+      +[0-9]*%FREE|+[0-9]*%VG) run_root "Extending $TARGET by $SIZE and resizing its filesystem" lvextend -r -l "$SIZE" "$TARGET" || true ;;
+      +[0-9]*[KkMmGgTt]) run_root "Extending $TARGET by $SIZE and resizing its filesystem" lvextend -r -L "$SIZE" "$TARGET" || true ;;
+      *) echo "Use a positive size such as +10G or +25%FREE." >&2; exit 2 ;;
+    esac
     ;;
   trim)
     findmnt -rn "$TARGET" >/dev/null 2>&1 || { echo "Mount point not found: $TARGET" >&2; exit 2; }
