@@ -1,38 +1,66 @@
 # Linux Disk, LVM and Filesystem Analyzer
 
-A read-only Bash toolkit for diagnosing Linux storage layout, capacity, filesystem, LVM, mount, and device-health issues.
+A Linux support toolkit for diagnosing storage problems and applying selected guarded filesystem, mount and LVM repairs.
 
-## Features
-
-- Block-device, partition, filesystem, UUID, and mount inventory
-- Capacity and inode utilisation thresholds
-- LVM physical volume, volume group, and logical volume evidence
-- Read-only, failed, and unusual mount-state detection
-- SMART summary where `smartctl` is available
-- Kernel storage-error indicators
-- Largest-directory evidence for selected mount points
-- Text, CSV, and JSON reports
-
-## Usage
+## Diagnostic script
 
 ```bash
 chmod +x src/linux_disk_lvm_analyzer.sh
 sudo ./src/linux_disk_lvm_analyzer.sh
 ```
 
-Optional filesystem threshold:
+The diagnostic script reports block devices, filesystems, mounts, LVM layout, capacity, inode usage, SMART indicators and kernel storage errors.
+
+## Repair script
+
+Run a read-only filesystem check:
 
 ```bash
-sudo ./src/linux_disk_lvm_analyzer.sh --warning-percent 85
+chmod +x src/linux_disk_lvm_repair.sh
+sudo ./src/linux_disk_lvm_repair.sh --check-device /dev/sdb1
 ```
 
-## Safety
+Repair an unmounted ext or XFS filesystem:
 
-The script does not format disks, mount or unmount filesystems, resize LVM volumes, repair filesystems, or modify partition tables.
+```bash
+sudo ./src/linux_disk_lvm_repair.sh --repair-device /dev/sdb1
+```
 
-## Validation
+Validate and mount configured filesystems:
 
-Test on a standard partitioned VM, an LVM-based VM, a near-capacity filesystem, and a host without SMART tooling.
+```bash
+sudo ./src/linux_disk_lvm_repair.sh --mount-all
+```
+
+Remount a selected filesystem read-write:
+
+```bash
+sudo ./src/linux_disk_lvm_repair.sh --remount-rw /data
+```
+
+Extend one logical volume and resize its filesystem:
+
+```bash
+sudo ./src/linux_disk_lvm_repair.sh \
+  --extend-lv /dev/vg0/data \
+  --size +10G
+```
+
+Percentage-based growth is also supported, for example `--size +25%FREE`. Use `--dry-run` to preview an operation.
+
+## What the repair does
+
+- Performs read-only ext or XFS checks.
+- Repairs one unmounted ext or XFS filesystem.
+- Validates `/etc/fstab` and runs `mount -a`.
+- Can remount one selected filesystem read-write.
+- Can extend one LVM logical volume and resize its filesystem.
+- Can run `fstrim` on one selected mount point.
+- Captures storage state before and after repair and backs up `/etc/fstab`.
+
+## Safety and limitations
+
+The script refuses filesystem repair while the target device is mounted. Filesystem repair and LVM extension can be disruptive and require a verified backup. It does not create filesystems, erase disks, change partition tables or shrink logical volumes.
 
 ## Author
 
